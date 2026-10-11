@@ -1,13 +1,17 @@
 # src/evidencelens/retrieval/lexical.py
+from typing import Any, cast
+
 from elasticsearch import AsyncElasticsearch
+
 from evidencelens.index.es import INDEX
+
 
 async def search_lexical(es: AsyncElasticsearch, query: str, k: int = 10, year_min: int | None = None) -> list[str]:
     """
     Performs BM25 lexical search on Elasticsearch using the custom biomedical analyzer.
     Returns a list of matching chunk IDs sorted by relevance score.
     """
-    body = {
+    body: dict[str, Any] = {
         "query": {
             "bool": {
                 "must": [
@@ -24,12 +28,16 @@ async def search_lexical(es: AsyncElasticsearch, query: str, k: int = 10, year_m
         "size": k
     }
     
-    # Optional year filter if specified in the request
     if year_min is not None:
         body["query"]["bool"]["filter"] = [{"range": {"year": {"gte": year_min}}}]
         
     resp = await es.search(index=INDEX, body=body)
-    hits = resp["hits"]["hits"]
+    hits = resp.get("hits", {}).get("hits", [])
     
-    # Extract and return the chunk IDs from the search hits
-    return [hit["_source"]["chunk_id"] for hit in hits]
+    chunk_ids: list[str] = []
+    for hit in hits:
+        hit_dict = cast(dict[str, Any], hit)
+        source = hit_dict.get("_source")
+        if isinstance(source, dict) and "chunk_id" in source:
+            chunk_ids.append(str(source["chunk_id"]))
+    return chunk_ids

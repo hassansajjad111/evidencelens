@@ -48,7 +48,7 @@ MAPPINGS = {
     }
 }
 
-async def init_elasticsearch(es_url: str, api_key: str = None) -> AsyncElasticsearch:
+async def init_elasticsearch(es_url: str, api_key: str | None = None) -> AsyncElasticsearch:
     """Initializes and verifies the Elasticsearch async client."""
     es = AsyncElasticsearch(es_url)
     if not await es.ping():

@@ -4,14 +4,16 @@ from contextlib import asynccontextmanager
 from typing import Annotated, Literal
 
 from elasticsearch import AsyncElasticsearch
-from evidencelens.config import get_settings
 from fastapi import Depends, FastAPI, Request
 from fastapi.responses import StreamingResponse
 from neo4j import AsyncGraphDatabase
 from pydantic import BaseModel
 from qdrant_client import AsyncQdrantClient
 
+from evidencelens.config import get_settings
+from evidencelens.retrieval.dense import search_dense
 from evidencelens.retrieval.fusion import rrf
+from evidencelens.retrieval.lexical import search_lexical
 
 
 class Container:
@@ -62,13 +64,15 @@ async def healthz(container: AppContainer):
 
 @app.post("/v1/search")
 async def search(req: SearchReq, container: AppContainer):
-    """Executes hybrid search across stores and applies RRF fusion[cite: 1, 3]."""
-    # Stub rankings for now; will hook to live ES/Qdrant queries next
-    mock_rankings = {
-        "es": ["chunk_1", "chunk_2", "chunk_3"],
-        "qdrant": ["chunk_2", "chunk_1", "chunk_4"]
+    """Executes live hybrid search across Elasticsearch and Qdrant, applying RRF fusion."""
+    es_hits = await search_lexical(container.es, req.query, k=req.k, year_min=req.year_min)
+    dense_hits = await search_dense(container.qc, req.query, k=req.k, year_min=req.year_min)
+    
+    rankings = {
+        "es": es_hits,
+        "qdrant": dense_hits
     }
-    fused_results = rrf(mock_rankings, k=60)
+    fused_results = rrf(rankings, k=60)
     
     return {
         "query": req.query,

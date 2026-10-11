@@ -1,6 +1,7 @@
 # src/evidencelens/retrieval/fusion.py
 from collections import defaultdict
 
+
 def rrf(rankings: dict[str, list[str]], weights: dict[str, float] | None = None, k: int = 60) -> list[tuple[str, float]]:
     """
     Computes Reciprocal Rank Fusion (RRF) across multiple retriever result lists.

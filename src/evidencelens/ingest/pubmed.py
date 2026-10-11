@@ -1,8 +1,8 @@
 import gzip
+from collections.abc import Iterator
 from pathlib import Path
-from typing import Iterator
-import polars as pl
-from lxml import etree
+
+from lxml import etree  # type: ignore[import-untyped]
 
 KEEP = {"PubmedArticle", "DeleteCitation"}
 

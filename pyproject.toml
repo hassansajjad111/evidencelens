@@ -1,25 +1,29 @@
 [project]
 name = "evidencelens"
 version = "0.1.0"
-requires-python = ">=3.12"
+requires-python = "==3.12.*"
 dependencies = [
-  # serving
-  "fastapi>=0.143", "uvicorn[standard]", "pydantic>=2.14", "pydantic-settings>=2.15", "httpx", "tenacity", "typer", "rich",
-  # stores (removed [fastembed] to avoid onnxruntime Intel Mac wheel errors)
-  "elasticsearch[async]>=9.5,<10", "qdrant-client>=1.19", "neo4j>=6.4",
-  # LLM / orchestration
-  "langchain>=1.4", "langgraph>=1.2", "langchain-openai", "langchain-neo4j", "langchain-qdrant",
-  "llama-index-core>=0.14", "neo4j-graphrag[openai,ollama,anthropic]>=1.22",
-  # models (pinned for Intel Mac compatibility)
-  "torch==2.2.2",
-  "torchvision==0.17.2",
-  "sentence-transformers>=3.0", "transformers>=4.38", "huggingface-hub<3",
-  # data
-  "polars>=0.20", "duckdb", "pyarrow", "lxml", "datasketch", "dvc",
-  # crawl/parse
-  "scrapy>=2.11", "trafilatura",
-  # eval / ops
-  "mlflow>=2.10", "langfuse>=2", "presidio-analyzer", "presidio-anonymizer",
+    # NumPy constraint for Intel Mac compatibility with torch
+    "numpy<2",
+    # serving
+    "fastapi>=0.143", "uvicorn[standard]", "pydantic>=2.14", "pydantic-settings>=2.15", "httpx", "tenacity", "typer", "rich",
+    # stores (removed [fastembed] to avoid onnxruntime Intel Mac wheel errors)
+    "elasticsearch[async]>=9.5,<10", "qdrant-client>=1.19", "neo4j>=6.4",
+    # LLM / orchestration
+    "langchain>=1.4", "langgraph>=1.2", "langchain-openai", "langchain-qdrant",
+    "llama-index-core>=0.14",
+    # models (pinned for Intel Mac compatibility)
+    "torch==2.2.2",
+    "torchvision==0.17.2",
+    "sentence-transformers>=3.0",
+    "transformers>=4.38,<4.44",
+    "huggingface-hub<3",
+    # data
+    "polars>=0.20", "duckdb", "pyarrow", "lxml", "datasketch", "dvc",
+    # crawl/parse
+    "scrapy>=2.11", "trafilatura",
+    # eval / ops
+    "mlflow>=2.10", "langfuse>=2", "presidio-analyzer", "presidio-anonymizer",
 ]
 
 [dependency-groups]
@@ -33,6 +37,9 @@ explicit = true
 [tool.uv.sources]
 torch = [{ index = "pytorch-cpu" }]
 torchvision = [{ index = "pytorch-cpu" }]
+
+[tool.uv]
+environments = ["sys_platform == 'darwin' and python_version == '3.12'"]
 
 [tool.ruff]
 line-length = 100

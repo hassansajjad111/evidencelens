@@ -3,7 +3,7 @@ from qdrant_client import AsyncQdrantClient, models
 
 COLLECTION = "el_chunks_v1"
 
-async def init_qdrant(qdrant_url: str, api_key: str = None) -> AsyncQdrantClient:
+async def init_qdrant(qdrant_url: str, api_key: str | None = None) -> AsyncQdrantClient:
     """Initializes and verifies the Qdrant async client."""
     qc = AsyncQdrantClient(url=qdrant_url, api_key=api_key)
     # Verify connectivity
@@ -29,7 +29,7 @@ async def create_collection_if_not_exists(qc: AsyncQdrantClient, dim: int = 384)
                 "bm25": models.SparseVectorParams(modifier=models.Modifier.IDF)
             },
         )
-        
+       
         # Create payload indexes BEFORE bulk load (critical for performance)[cite: 2, 3]
         for field, schema in [
             ("year", models.PayloadSchemaType.INTEGER), 
