@@ -59,7 +59,7 @@ class SearchReq(BaseModel):
 
     query: str
     k: int = 10
-    mode: Literal["bm25", "dense", "hybrid"] = "hybrid"
+    mode: Literal["bm25", "dense", "hybrid", "es_hybrid", "graph", "full"] = "full"
     year_min: int | None = None
 
 class AskReq(BaseModel):
