@@ -1,15 +1,21 @@
-# src/evidencelens/retrieval/fusion.py
+"""`src/evidencelens/retrieval/fusion.py`: rank fusion across retrievers.
+
+RRF combines candidate order rather than incomparable engine-specific scores.
+This keeps fusion robust when Elasticsearch and Qdrant use different score
+scales; optional per-retriever weights let later evaluations tune contributions.
+"""
+
 from collections import defaultdict
 
 
 def rrf(rankings: dict[str, list[str]], weights: dict[str, float] | None = None, k: int = 60) -> list[tuple[str, float]]:
     """
-    Computes Reciprocal Rank Fusion (RRF) across multiple retriever result lists.
+    Compute Reciprocal Rank Fusion (RRF) across ranked candidate lists.
     
     :dict rankings: {"es": [chunk_ids...], "qdrant": [chunk_ids...], "graph": [chunk_ids...]}
     :dict weights: Optional custom weights per retriever
     :int k: RRF smoothing constant (default = 60)
-    :returns: Sorted list of tuples (chunk_id, fused_score)
+    :returns: Unique IDs sorted by descending fused score (higher ranks score more).
     """
     scores: dict[str, float] = defaultdict(float)
     weights = weights or {}
@@ -19,5 +25,5 @@ def rrf(rankings: dict[str, list[str]], weights: dict[str, float] | None = None,
         for rank, cid in enumerate(ids, start=1):
             scores[cid] += w / (k + rank)
            
-    # Sort by fused score descending
+    # Sorting by the rank-only aggregate avoids comparing raw BM25 and cosine scores.
     return sorted(scores.items(), key=lambda x: x[1], reverse=True)

@@ -1,1 +1,15 @@
+# Local credentials; retain only the safe template.
+.env
+.env.*
+!.env.example
+# Virtual environments and Python bytecode/caches are machine-generated.
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+# Local corpus, service state, and downloaded datasets are not source artifacts.
 data/
+*.parquet

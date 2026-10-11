@@ -1,3 +1,12 @@
+"""Streaming parser for compressed PubMed baseline/update XML records.
+
+`parse_file` yields one normalized dictionary at a time rather than collecting a
+whole shard in memory, which is important on an 8 GB laptop. DeleteCitation
+records are emitted as delete operations for a future downstream upsert/delete
+stage. This parser does not download shards, filter the corpus, persist Parquet,
+or update Elasticsearch/Qdrant by itself.
+"""
+
 import gzip
 from collections.abc import Iterator
 from pathlib import Path
@@ -6,11 +15,18 @@ from lxml import etree  # type: ignore[import-untyped]
 
 KEEP = {"PubmedArticle", "DeleteCitation"}
 
+
 def _txt(el) -> str:
+    """Flatten nested XML text safely; absent elements become an empty string."""
     return "".join(el.itertext()).strip() if el is not None else ""
 
+
 def parse_file(path: Path) -> Iterator[dict]:
-    """Streamingly parses large compressed PubMed XML files without crashing RAM."""
+    """Yield normalized article upserts and PMID tombstones from one `.xml.gz` file.
+
+    Article abstracts retain their section labels when available. Each processed
+    XML element is cleared promptly to cap parser memory while streaming shards.
+    """
     with gzip.open(path, "rb") as fh:
         for _, el in etree.iterparse(fh, events=("end",), huge_tree=True):
             if el.tag not in KEEP:

@@ -1,8 +1,10 @@
-# tests/test_fusion.py
+"""`tests/test_fusion.py`: rank-fusion behavior tests without live services."""
+
 from evidencelens.retrieval.fusion import rrf
 
 
 def test_rrf_basic():
+    """Verify fusion combines multiple rankings and returns deterministic ordering."""
     # Mock rankings from two retrievers
     rankings = {
         "es": ["doc_A", "doc_B", "doc_C"],

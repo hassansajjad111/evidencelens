@@ -1,32 +1,58 @@
+# Local-only databases. Ports bind to loopback and memory caps suit an 8 GB laptop.
+# Change the example passwords via EL_* variables in .env before sharing the host.
 name: evidencelens
 services:
   elasticsearch:
+    # BM25/text index; actual index creation and document loading are separate work.
     image: docker.elastic.co/elasticsearch/elasticsearch:9.5.5
     environment:
-      - discovery.type=single-node
-      - ELASTIC_PASSWORD=change-me
-      - xpack.security.http.ssl.enabled=false
+      discovery.type: single-node
+      ELASTIC_PASSWORD: ${EL_ES_PASSWORD:-change-me}
+      xpack.security.http.ssl.enabled: "false"
     mem_limit: 1.5g
     ulimits: { memlock: { soft: -1, hard: -1 } }
     ports: ["127.0.0.1:9200:9200"]
     volumes: [es-data:/usr/share/elasticsearch/data]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS -u elastic:$${ELASTIC_PASSWORD} 'http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=5s' >/dev/null"]
+      interval: 10s
+      timeout: 8s
+      retries: 30
+      start_period: 45s
 
   qdrant:
+    # Dense/sparse vector store; 1 GB cap limits local resource pressure.
     image: qdrant/qdrant:v1.19.2
     environment:
-      - QDRANT__SERVICE__API_KEY=change-me
+      QDRANT__SERVICE__API_KEY: ${EL_QDRANT_API_KEY:-change-me}
     mem_limit: 1g
     ports: ["127.0.0.1:6333:6333"]
     volumes: [qdrant-data:/qdrant/storage]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:6333/healthz >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
 
   neo4j:
+    # Graph store for future entity/provenance traversal; graph loading is not wired yet.
     image: neo4j:2026.07.1
     environment:
-      - NEO4J_AUTH=neo4j/change-me-too
-      - NEO4J_PLUGINS=["apoc","graph-data-science"]
-      - NEO4J_server_memory_heap_max__size=512M
+      NEO4J_AUTH: neo4j/${EL_NEO4J_PASSWORD:-change-me-too}
+      NEO4J_PLUGINS: '["apoc","graph-data-science"]'
+      NEO4J_server_memory_heap_max__size: 512M
+      EL_NEO4J_PASSWORD: ${EL_NEO4J_PASSWORD:-change-me-too}
     mem_limit: 1g
     ports: ["127.0.0.1:7474:7474", "127.0.0.1:7687:7687"]
     volumes: [./data/neo4j:/data]
+    healthcheck:
+      test: ["CMD-SHELL", "cypher-shell -u neo4j -p \"$${EL_NEO4J_PASSWORD}\" 'RETURN 1' >/dev/null"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+      start_period: 60s
 
+# Named volumes persist ES/Qdrant data across `docker compose down`; do not add -v
+# casually, because that removes indexed data. Neo4j persists under ./data/neo4j.
 volumes: { es-data: {}, qdrant-data: {} }

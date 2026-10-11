@@ -1,10 +1,19 @@
-# src/evidencelens/config.py
+"""`src/evidencelens/config.py`: central settings loaded from `EL_*` values.
+
+Keeping service URLs, credentials, and model choices here gives the API and
+indexing code one consistent source of settings. Environment variables override
+defaults; `.env` is for local development and must never be committed.
+"""
+
 from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    """Typed settings for local services, embedding, generation, and data APIs."""
+
+    # Pydantic Settings reads these as EL_ES_URL, EL_EMBED_MODEL, etc.
     model_config = SettingsConfigDict(env_prefix="EL_", env_file=".env", extra="ignore")
     es_url: str = "http://127.0.0.1:9200"
     es_user: str = "elastic"
@@ -25,4 +34,5 @@ class Settings(BaseSettings):
 
 @lru_cache
 def get_settings() -> Settings:
+    """Return one cached settings object so clients share identical configuration."""
     return Settings()

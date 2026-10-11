@@ -1,9 +1,18 @@
-# src/evidencelens/index/es.py
+"""`src/evidencelens/index/es.py`: ES schema and async connectivity helper.
+
+The schema defines biomedical-aware text analysis and exact-match metadata fields.
+Elasticsearch is the lexical/BM25 engine and source for later chunk hydration;
+actual index creation and bulk ingestion are not wired into the current pipeline.
+"""
+
 from elasticsearch import AsyncElasticsearch
 
+# Keep this index name coordinated with retrieval, ingestion, and rebuild scripts.
 INDEX = "el_chunks_v1"
+# Preserve common biomedical tokens so analyzer splitting does not destroy them.
 PROTECTED = ["HbA1c", "IL-6", "T2DM", "SGLT2", "GLP-1", "eGFR", "LDL-C", "NT-proBNP"]
 
+# Small single-node settings suit local development; not a production cluster plan.
 SETTINGS = {
     "number_of_shards": 1, 
     "number_of_replicas": 0,
@@ -31,6 +40,7 @@ SETTINGS = {
     },
 }
 
+# Strict mappings catch accidental field drift between parsers and index writers.
 MAPPINGS = {
     "dynamic": "strict", 
     "properties": {
@@ -49,7 +59,10 @@ MAPPINGS = {
 }
 
 async def init_elasticsearch(es_url: str, api_key: str | None = None) -> AsyncElasticsearch:
-    """Initializes and verifies the Elasticsearch async client."""
+    """Create and ping an async ES client; authentication is configured by callers.
+
+    `api_key` is retained as a future integration point and is not currently used.
+    """
     es = AsyncElasticsearch(es_url)
     if not await es.ping():
         raise ConnectionError(f"Could not connect to Elasticsearch at {es_url}")

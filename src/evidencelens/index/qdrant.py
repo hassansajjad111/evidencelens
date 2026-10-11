@@ -1,17 +1,31 @@
 # src/evidencelens/index/qdrant.py
+"""Qdrant collection setup for the project's vector retrieval store.
+
+Dense vectors use cosine distance, while a named sparse vector is reserved for
+the planned sparse/hybrid path. Payload indexes support filters such as year and
+source. This module creates schema only; document embeddings and point upserts
+are not implemented in the current ingestion flow.
+"""
+
 from qdrant_client import AsyncQdrantClient, models
 
+# Must stay aligned with Qdrant search and any future index/rebuild command.
 COLLECTION = "el_chunks_v1"
 
+
 async def init_qdrant(qdrant_url: str, api_key: str | None = None) -> AsyncQdrantClient:
-    """Initializes and verifies the Qdrant async client."""
+    """Create a Qdrant client and verify server connectivity before returning it."""
     qc = AsyncQdrantClient(url=qdrant_url, api_key=api_key)
     # Verify connectivity
     await qc.get_collections()
     return qc
 
 async def create_collection_if_not_exists(qc: AsyncQdrantClient, dim: int = 384):
-    """Creates the Qdrant collection with named dense + sparse vectors and payload indexes."""
+    """Idempotently create dense/sparse vector schema and prefilter payload indexes.
+
+    `dim` must exactly match the embedding model used for every query and point.
+    Creating indexes before a bulk load keeps filtered-search setup predictable.
+    """
     collections = await qc.get_collections()
     exists = any(c.name == COLLECTION for c in collections.collections)
     
@@ -30,7 +44,7 @@ async def create_collection_if_not_exists(qc: AsyncQdrantClient, dim: int = 384)
             },
         )
        
-        # Create payload indexes BEFORE bulk load (critical for performance)[cite: 2, 3]
+        # Create payload indexes before loading points so filter fields are indexed.
         for field, schema in [
             ("year", models.PayloadSchemaType.INTEGER), 
             ("source", models.PayloadSchemaType.KEYWORD),

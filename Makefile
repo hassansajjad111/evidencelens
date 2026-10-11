@@ -1,34 +1,41 @@
-.PHONY: venv up down sample-data index-sample serve lint test
+# Convenience commands for repeatable local setup, services, and quality checks.
+# Run these targets from the repository root; `uv.lock` pins Python dependencies.
+.PHONY: setup sync venv up down serve lint test compose-check check
 
-venv:
-	@if [ ! -d .venv ]; then \
-		echo "Initializing virtual environment (.venv)..."; \
-		python3 -m venv .venv; \
-		.venv/bin/python -m ensurepip --upgrade; \
-	fi
-	@if [ ! -f .venv/bin/uvicorn ]; then \
-		echo "Installing project dependencies..."; \
-		.venv/bin/python -m pip install -e .; \
-	fi
+# `setup` and the compatibility target `venv` converge on the same locked sync.
+setup: sync
 
+# Install/synchronize project and development dependencies from uv.lock.
+sync:
+	uv sync --locked
+
+# Retained so older notes using `make venv` keep working; uv owns the venv.
+venv: sync
+
+# Start the three local databases and wait until their health checks pass.
 up:
 	docker compose up -d --wait
 
+# Stop containers but preserve named Docker volumes and the local Neo4j directory.
 down:
 	docker compose down
 
-sample-data: venv
-	PYTHONPATH=src .venv/bin/python -c "print('Sample corpus generation placeholder')"
-
-index-sample: venv
-	PYTHONPATH=src .venv/bin/python -c "print('Indexing sample corpus...')"
-
+# Run the ASGI app with src-layout imports and hot reload for local development.
 serve: venv
-	PYTHONPATH=src .venv/bin/uvicorn evidencelens.api.main:app --reload --reload-dir src --port 8000
+	PYTHONPATH=src uv run --locked uvicorn evidencelens.api.main:app --reload --reload-dir src --port 8000
 
+# Static style and type checks.
 lint: venv
-	.venv/bin/ruff check .
-	.venv/bin/mypy src
+	uv run --locked ruff check .
+	uv run --locked mypy src
 
+# Fast unit tests; integration tests should be marked separately when added.
 test: venv
-	PYTHONPATH=src .venv/bin/pytest
+	uv run --locked pytest
+
+# Parse Compose configuration without creating or restarting containers.
+compose-check:
+	docker compose config --quiet
+
+# One command gate used before committing: lint, type-check, tests, Compose parse.
+check: lint test compose-check
